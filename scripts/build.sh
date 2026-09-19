@@ -5,7 +5,7 @@
 # EXT_VERSION (required, e.g. 0.1.2) is the single version input: it is
 # stamped into the binary (-ldflags -X, reported by `--version` and the
 # startup log), into gen/index.json settings.version (via gentypes -version),
-# and is the same value scripts/oci-publish.sh publishes as the OCI tag.
+# and is the same value the CI publish job stamps as the OCI tag.
 #
 # Optional environment knobs (the defaults keep the historical behaviour):
 #   GOOS / GOARCH       target platform (default: host). A cross build skips

@@ -13,11 +13,6 @@
 # Any other registry: set the REGISTRY_USERNAME / REGISTRY_PASSWORD repo
 # secrets and pass the registry host as the `registry` input.
 #
-# Note: the scripts/oci-proxy.py loopback proxy (Bicep 0.47 oras-dotnet
-# mid-body-401 workaround) is a Gitea-specific fix — GHCR answers
-# anonymous requests normally, so the 401 → token → retry dance completes
-# without it.
-#
 # Version: on a tag push the version is the tag name minus `v`; on manual
 # dispatch the `version` input is used. Regular branch/PR builds stamp `dev`
 # (stamping only matters for the published artifact).
@@ -59,18 +54,24 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
           go-version-file: src/go.mod
 
+      # The hosted runner user can't write to /usr/local/bin, so install into
+      # a runner-owned dir and put `bicep` on PATH for all following steps.
+      # Pinned to BICEP_VERSION from the official Azure/bicep releases — no
+      # third-party setup action, no version drift.
       - name: Install Bicep CLI (build.sh packages the local extension with it)
         run: |
-          curl -fsSL -o /usr/local/bin/bicep \
+          install -d "${RUNNER_TEMP}/bin"
+          curl -fsSL -o "${RUNNER_TEMP}/bin/bicep" \
             "https://github.com/Azure/bicep/releases/download/v${BICEP_VERSION}/bicep-linux-x64"
-          chmod +x /usr/local/bin/bicep
-          bicep --version
+          chmod +x "${RUNNER_TEMP}/bin/bicep"
+          "${RUNNER_TEMP}/bin/bicep" --version
+          echo "${RUNNER_TEMP}/bin" >> "$GITHUB_PATH"
 
       - name: gofmt check
         working-directory: src
@@ -105,7 +106,7 @@ jobs:
           awk -v c="$cov" 'BEGIN { exit !(c + 0 >= 80.0) }'
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a  # v9.3.0
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
           working-directory: src
@@ -155,7 +156,7 @@ jobs:
           echo "==> gen/ byte-stable (index.json differs only in settings.version)"
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: bicep-ext-k8smanifest-${{ steps.ver.outputs.version }}
           path: |
@@ -174,9 +175,9 @@ jobs:
       REGISTRY: ${{ inputs.registry || 'ghcr.io' }}
       REPO: ${{ inputs.repo || github.repository }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
           go-version-file: src/go.mod
 
@@ -197,12 +198,16 @@ jobs:
           echo "version=$v" >> "$GITHUB_OUTPUT"
           echo "==> publishing br:$REGISTRY/$REPO:$v"
 
+      # Same as the build-test job: the hosted runner user can't write to
+      # /usr/local/bin, so install into a runner-owned dir and put `bicep` on
+      # PATH. Pinned to BICEP_VERSION from the official Azure/bicep releases.
       - name: Install Bicep CLI
         run: |
-          curl -fsSL -o /usr/local/bin/bicep \
+          install -d "${RUNNER_TEMP}/bin"
+          curl -fsSL -o "${RUNNER_TEMP}/bin/bicep" \
             "https://github.com/Azure/bicep/releases/download/v${BICEP_VERSION}/bicep-linux-x64"
-          chmod +x /usr/local/bin/bicep
-          bicep --version
+          chmod +x "${RUNNER_TEMP}/bin/bicep"
+          echo "${RUNNER_TEMP}/bin" >> "$GITHUB_PATH"
 
       # The generated type index must match the committed swagger for THIS
       # version (the committed index's settings.version must equal the tag).
