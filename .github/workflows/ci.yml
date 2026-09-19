@@ -1,0 +1,271 @@
+# Build, test and publish the k8smanifest Bicep extension.
+#
+# - build-test: runs on every push/PR — gofmt, go vet, go test -race,
+#   cross-compile smoke, coverage floor, golangci-lint, govulncheck, then an
+#   EXT_VERSION-stamped build whose artifacts are uploaded.
+# - publish: runs on `v*.*.*` tag pushes and manual dispatch (with a version
+#   input). Verifies src/gen is in sync with the committed swagger for that
+#   version, builds the release matrix, publishes the multi-platform set to
+#   the OCI registry, and creates a GitHub Release with the per-platform
+#   binaries + local package + checksums (offline/portable channel).
+#
+# Registry: ghcr.io by default (credentials via GITHUB_TOKEN, packages: write).
+# Any other registry: set the REGISTRY_USERNAME / REGISTRY_PASSWORD repo
+# secrets and pass the registry host as the `registry` input.
+#
+# Note: the scripts/oci-proxy.py loopback proxy (Bicep 0.47 oras-dotnet
+# mid-body-401 workaround) is a Gitea-specific fix — GHCR answers
+# anonymous requests normally, so the 401 → token → retry dance completes
+# without it.
+#
+# Version: on a tag push the version is the tag name minus `v`; on manual
+# dispatch the `version` input is used. Regular branch/PR builds stamp `dev`
+# (stamping only matters for the published artifact).
+
+name: build-test-publish
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      registry:
+        description: 'OCI registry host (default: ghcr.io)'
+        required: false
+        default: 'ghcr.io'
+      repo:
+        description: 'OCI repository path (default: this repo)'
+        required: false
+      version:
+        description: 'Extension version to publish (x.y.z; required unless a v*.*.* tag is pushed)'
+        required: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Don't cancel a publish in flight: a torn-down `bicep publish-extension`
+  # can leave a partial upload in the registry.
+  cancel-in-progress: false
+
+env:
+  BICEP_VERSION: 0.47.16
+  GOLANGCI_LINT_VERSION: v2.13.2
+  GOVULNCHECK_VERSION: v1.8.0
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: src/go.mod
+
+      - name: Install Bicep CLI (build.sh packages the local extension with it)
+        run: |
+          curl -fsSL -o /usr/local/bin/bicep \
+            "https://github.com/Azure/bicep/releases/download/v${BICEP_VERSION}/bicep-linux-x64"
+          chmod +x /usr/local/bin/bicep
+          bicep --version
+
+      - name: gofmt check
+        working-directory: src
+        run: test -z "$(gofmt -l .)"
+
+      - name: go vet
+        working-directory: src
+        run: go vet ./...
+
+      - name: Unit + e2e tests (race detector — the extension server is multi-goroutine)
+        working-directory: src
+        run: go test -race ./...
+
+      # Authors run the extension on their own machines; a broken cross
+      # build would only surface there. Smoke-compile the main targets.
+      - name: Cross-compile smoke
+        working-directory: src
+        run: |
+          GOOS=darwin  GOARCH=amd64 go build ./...
+          GOOS=darwin  GOARCH=arm64 go build ./...
+          GOOS=windows GOARCH=amd64 go build ./...
+          GOOS=linux   GOARCH=arm64 go build ./...
+
+      # The deterministic-output contract is the project's core value; a
+      # coverage floor keeps the render/parse paths tested (currently 85%+).
+      - name: Coverage floor (root package >= 80%)
+        working-directory: src
+        run: |
+          go test -coverprofile=cover.out . >/dev/null
+          cov=$(go tool cover -func=cover.out | awk '/^total:/ {print $3}' | tr -d '%')
+          echo "==> root package coverage: ${cov}%"
+          awk -v c="$cov" 'BEGIN { exit !(c + 0 >= 80.0) }'
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+          working-directory: src
+          args: ./...
+
+      # golangci-lint v2 dropped the wrapped `govulncheck` linter, so the
+      # standalone scanner runs as its own step: it walks the module's import
+      # graph against the Go vulnerability database (gosec only sees
+      # source-level issues, so vulnerable deps would slip past it).
+      - name: govulncheck (known vulnerable dependencies)
+        working-directory: src
+        run: go run golang.org/x/vuln/cmd/govulncheck@${{ env.GOVULNCHECK_VERSION }} ./...
+
+      - name: Resolve EXT_VERSION
+        id: ver
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            v="${GITHUB_REF_NAME#v}"
+          elif [[ -n "${INPUT_VERSION}" ]]; then
+            v="${INPUT_VERSION}"
+          else
+            v="dev"
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "==> EXT_VERSION=$v"
+
+      # Stamp + build + local package via the normal script (it verifies the
+      # --version flag, the stamp and the local package in one place).
+      - name: Build (EXT_VERSION stamped)
+        env:
+          EXT_VERSION: ${{ steps.ver.outputs.version }}
+        run: bash scripts/build.sh
+
+      # Regeneration must be byte-stable: build.sh just re-ran gentypes with
+      # the CI stamp, so types.json (version-free) must be byte-identical to
+      # the committed file and index.json may differ only in settings.version.
+      - name: gen/ regeneration is byte-stable
+        working-directory: src
+        run: |
+          git diff --exit-code -- gen/types.json
+          if git diff -- gen/index.json | grep -E '^[+-][^+-]' | grep -vE '^[-+][[:space:]]*"version": '; then
+            echo "ERROR: src/gen drift beyond the settings.version line — commit the regenerated gen/ files" >&2
+            exit 1
+          fi
+          echo "==> gen/ byte-stable (index.json differs only in settings.version)"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bicep-ext-k8smanifest-${{ steps.ver.outputs.version }}
+          path: |
+            bin/bicep-ext-k8smanifest
+            bin/bicep-ext-k8smanifest-pkg
+          retention-days: 14
+
+  publish:
+    needs: build-test
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # GitHub Release assets
+      packages: write # GITHUB_TOKEN push to GHCR (the default registry)
+    env:
+      REGISTRY: ${{ inputs.registry || 'ghcr.io' }}
+      REPO: ${{ inputs.repo || github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: src/go.mod
+
+      - name: Resolve EXT_VERSION (semver required)
+        id: ver
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            v="${GITHUB_REF_NAME#v}"
+          else
+            v="${INPUT_VERSION}"
+          fi
+          if ! [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: publish needs a x.y.z version (got '$v'); push a v<version> tag or pass the version input" >&2
+            exit 1
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "==> publishing br:$REGISTRY/$REPO:$v"
+
+      - name: Install Bicep CLI
+        run: |
+          curl -fsSL -o /usr/local/bin/bicep \
+            "https://github.com/Azure/bicep/releases/download/v${BICEP_VERSION}/bicep-linux-x64"
+          chmod +x /usr/local/bin/bicep
+          bicep --version
+
+      # The generated type index must match the committed swagger for THIS
+      # version (the committed index's settings.version must equal the tag).
+      - name: gen/ in sync check
+        working-directory: src
+        run: |
+          go run ./cmd/gentypes -version "${EXT_VERSION}"
+          if ! git diff --exit-code -- gen/; then
+            echo "ERROR: src/gen is stale for EXT_VERSION=${EXT_VERSION} — commit the regenerated gen/ files (and swagger/ if the pin moved) before tagging" >&2
+            exit 1
+          fi
+        env:
+          EXT_VERSION: ${{ steps.ver.outputs.version }}
+
+      # The release matrix: one binary per platform + the multi-platform
+      # local package + checksums. The OCI publish below ships the same
+      # multi-platform set to the registry (a linux-only blob would strand
+      # non-Linux br: consumers), and the assets are the offline/portable
+      # fallback channel.
+      - name: Build the release matrix + multi-platform package
+        env:
+          EXT_VERSION: ${{ steps.ver.outputs.version }}
+        run: bash scripts/release-build.sh
+
+      - name: Publish to OCI registry
+        env:
+          BICEP_TRUSTED_REGISTRIES: ${{ env.REGISTRY }}
+          DOCKER_REGISTRY: ${{ env.REGISTRY }}
+          # GHCR default: GITHUB_TOKEN (packages: write). Custom registries
+          # use the repo's REGISTRY_USERNAME / REGISTRY_PASSWORD secrets.
+          DOCKER_USERNAME: ${{ (inputs.registry || 'ghcr.io') == 'ghcr.io' && 'bot' || secrets.REGISTRY_USERNAME }}
+          DOCKER_PASSWORD: ${{ (inputs.registry || 'ghcr.io') == 'ghcr.io' && secrets.GITHUB_TOKEN || secrets.REGISTRY_PASSWORD }}
+          EXT_VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          # One "<flag> <path>" pair per line from release-build.sh.
+          # shellcheck disable=SC2046
+          bicep publish-extension src/gen/index.json $(tr '\n' ' ' < bin/release/bicep-flags.txt) \
+            --target "br:${REGISTRY}/${REPO}:${EXT_VERSION}" \
+            --force
+          echo "Published br:${REGISTRY}/${REPO}:${EXT_VERSION} (multi-platform)"
+          echo
+          echo "Consume it with a bicepconfig.json like:"
+          echo "  { \"experimentalFeaturesEnabled\": { \"localDeploy\": true, \"ociEnabled\": true },"
+          echo "    \"extensions\": { \"k8smanifest\": \"br:${REGISTRY}/${REPO}:${EXT_VERSION}\" } }"
+
+      - name: Create the GitHub release (portable/offline channel)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ver="${{ steps.ver.outputs.version }}"
+          cat >release-notes.md <<NOTES
+          ## bicep-ext-k8smanifest v$ver
+
+          Registry (primary): br:${{ env.REGISTRY }}/${{ env.REPO }}:$ver — see the README quickstart.
+
+          Local package (all platforms, offline/portable): extract
+          bicep-ext-k8smanifest-pkg-v$ver.tgz and point
+          bicepconfig.json's extensions.k8smanifest at it. Bicep picks the
+          binary matching the author's OS. Raw per-platform binaries are
+          included for inspection; verify with SHA256SUMS.
+          NOTES
+          gh release create "v$ver" \
+            bin/release/bicep-ext-k8smanifest-* bin/release/SHA256SUMS \
+            --title "bicep-ext-k8smanifest v$ver" \
+            --notes-file release-notes.md
+          echo "==> https://github.com/${{ github.repository }}/releases/tag/v$ver"
