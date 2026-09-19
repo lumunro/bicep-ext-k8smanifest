@@ -1,0 +1,23 @@
+# Dependabot — monthly scans for the Go module (src/) and GitHub Actions.
+#
+# Auto-merge: this file CANNOT express it — enable it on the repo instead:
+#   Settings -> Code security -> Dependabot -> "Automatically merge
+#   version updates" (enable it in the repo's GitHub settings).
+# Merges are check-gated: a PR only merges when CI is green, so a bad bump
+# (e.g. a bicep-types-go change that would flap the byte-stable gen/
+# artifacts) fails the byte-stability check and never merges.
+#
+# Note: the swagger/ pins are deliberate inputs (scripts/update-*.sh), not
+# dependencies — Dependabot correctly has nothing to do with them.
+version: 2
+updates:
+  - package-ecosystem: "golang"
+    directory: "/src"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
