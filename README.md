@@ -14,7 +14,7 @@ external service.
 
 ## Why this exists
 
-We want to deploy the cluster via GitOps, so the native manifest files need to
+We want to deploy into the cluster via GitOps, so the native manifest files need to
 live in the repository as plain YAML. Microsoft's own
 [Bicep Kubernetes extension](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-kubernetes-extension)
 (preview) does not fit that: it deploys straight to the cluster during the ARM
@@ -154,18 +154,6 @@ never edit them by hand.
 - `samples/bicep/raw/` — the raw passthrough: two ConfigMaps through
   `k8smanifest/Raw@v1` (one from a file, one inline), for documents the
   typed bodies cannot express.
-
-## Open items
-
-Known gaps are tracked in
-[docs/architecture.md](docs/architecture.md#open-items).
-
-## Documentation
-
-| Document | Purpose |
-|----------|---------|
-| [docs/architecture.md](docs/architecture.md) | Technical reference: how the extension works, type coverage, YAML correctness, layout, build/run, Flux, publishing, open items |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | How to build, test and contribute (determinism contract, generated files, versioning) |
 
 ## Licence
 
