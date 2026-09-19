@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: raw-file-config
+  namespace: default
+  labels:
+    app.kubernetes.io/managed-by: bicep
+data:
+  greeting: hello from a file
+  enabled: 'yes'

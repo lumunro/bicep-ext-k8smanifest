@@ -1,0 +1,15 @@
+{
+  "experimentalFeaturesEnabled": {
+    "localDeploy": true
+  },
+  "cloud": {
+    "credentialPrecedence": [
+      "AzureCLI"
+    ],
+    "currentProfile": "AzureCloud"
+  },
+  "extensions": {
+    "k8smanifest": "../../bin/bicep-ext-k8smanifest-pkg"
+  },
+  "implicitExtensions": []
+}
