@@ -1,0 +1,35 @@
+{
+  "definitions": {
+    "io.k8s.api.example.com.v1.Widget": {
+      "description": "Widget (v1), from the widgets.example.com CRD schema of the pinned lab cluster (Cilium v1.20.1); refreshed by scripts/update-cluster-crds.sh.",
+      "properties": {
+        "metadata": {
+          "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "What the widget should do.",
+          "properties": {
+            "desired": {
+              "description": "How many things the widget does.",
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "label": {
+              "description": "What the widget says.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "label"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "spec"
+      ],
+      "type": "object"
+    }
+  }
+}

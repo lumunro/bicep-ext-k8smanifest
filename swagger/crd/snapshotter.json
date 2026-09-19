@@ -1,0 +1,244 @@
+{
+  "definitions": {
+    "io.k8s.api.snapshot.storage.k8s.io.v1.VolumeSnapshot": {
+      "description": "CSI VolumeSnapshot (v1), from the kubernetes-csi/external-snapshotter CRD schema (v8.6.0).",
+      "properties": {
+        "metadata": {
+          "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "spec defines the desired characteristics of a snapshot requested by a user.\nMore info: https://kubernetes.io/docs/concepts/storage/volume-snapshots#volumesnapshots\nRequired.",
+          "properties": {
+            "source": {
+              "description": "source specifies where a snapshot will be created from.\nThis field is immutable after creation.\nRequired.",
+              "properties": {
+                "persistentVolumeClaimName": {
+                  "description": "persistentVolumeClaimName specifies the name of the PersistentVolumeClaim\nobject representing the volume from which a snapshot should be created.\nThis PVC is assumed to be in the same namespace as the VolumeSnapshot\nobject.\nThis field should be set if the snapshot does not exists, and needs to be\ncreated.\nThis field is immutable.",
+                  "type": "string",
+                  "x-kubernetes-validations": [
+                    {
+                      "message": "persistentVolumeClaimName is immutable",
+                      "rule": "self == oldSelf"
+                    }
+                  ]
+                },
+                "volumeSnapshotContentName": {
+                  "description": "volumeSnapshotContentName specifies the name of a pre-existing VolumeSnapshotContent\nobject representing an existing volume snapshot.\nThis field should be set if the snapshot already exists and only needs a representation in Kubernetes.\nThis field is immutable.",
+                  "type": "string",
+                  "x-kubernetes-validations": [
+                    {
+                      "message": "volumeSnapshotContentName is immutable",
+                      "rule": "self == oldSelf"
+                    }
+                  ]
+                }
+              },
+              "type": "object",
+              "x-kubernetes-validations": [
+                {
+                  "message": "persistentVolumeClaimName is required once set",
+                  "rule": "!has(oldSelf.persistentVolumeClaimName) || has(self.persistentVolumeClaimName)"
+                },
+                {
+                  "message": "volumeSnapshotContentName is required once set",
+                  "rule": "!has(oldSelf.volumeSnapshotContentName) || has(self.volumeSnapshotContentName)"
+                },
+                {
+                  "message": "exactly one of volumeSnapshotContentName and persistentVolumeClaimName must be set",
+                  "rule": "(has(self.volumeSnapshotContentName) && !has(self.persistentVolumeClaimName)) || (!has(self.volumeSnapshotContentName) && has(self.persistentVolumeClaimName))"
+                }
+              ]
+            },
+            "volumeSnapshotClassName": {
+              "description": "VolumeSnapshotClassName is the name of the VolumeSnapshotClass\nrequested by the VolumeSnapshot.\nVolumeSnapshotClassName may be left nil to indicate that the default\nSnapshotClass should be used.\nA given cluster may have multiple default Volume SnapshotClasses: one\ndefault per CSI Driver. If a VolumeSnapshot does not specify a SnapshotClass,\nVolumeSnapshotSource will be checked to figure out what the associated\nCSI Driver is, and the default VolumeSnapshotClass associated with that\nCSI Driver will be used. If more than one VolumeSnapshotClass exist for\na given CSI Driver and more than one have been marked as default,\nCreateSnapshot will fail and generate an event.\nEmpty string is not allowed for this field.",
+              "type": "string",
+              "x-kubernetes-validations": [
+                {
+                  "message": "volumeSnapshotClassName must not be the empty string when set",
+                  "rule": "size(self) > 0"
+                }
+              ]
+            }
+          },
+          "required": [
+            "source"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "spec"
+      ],
+      "type": "object"
+    },
+    "io.k8s.api.snapshot.storage.k8s.io.v1.VolumeSnapshotClass": {
+      "description": "CSI VolumeSnapshotClass (v1), from the kubernetes-csi/external-snapshotter CRD schema (v8.6.0).",
+      "properties": {
+        "deletionPolicy": {
+          "description": "deletionPolicy determines whether a VolumeSnapshotContent created through\nthe VolumeSnapshotClass should be deleted when its bound VolumeSnapshot is deleted.\nSupported values are \"Retain\" and \"Delete\".\n\"Retain\" means that the VolumeSnapshotContent and its physical snapshot on underlying storage system are kept.\n\"Delete\" means that the VolumeSnapshotContent and its physical snapshot on underlying storage system are deleted.\nRequired.",
+          "enum": [
+            "Delete",
+            "Retain"
+          ],
+          "type": "string"
+        },
+        "driver": {
+          "description": "driver is the name of the storage driver that handles this VolumeSnapshotClass.\nRequired.",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "parameters is a key-value map with storage driver specific parameters for creating snapshots.\nThese values are opaque to Kubernetes.",
+          "type": "object"
+        }
+      },
+      "required": [
+        "deletionPolicy",
+        "driver"
+      ],
+      "type": "object"
+    },
+    "io.k8s.api.snapshot.storage.k8s.io.v1.VolumeSnapshotContent": {
+      "description": "CSI VolumeSnapshotContent (v1), from the kubernetes-csi/external-snapshotter CRD schema (v8.6.0).",
+      "properties": {
+        "metadata": {
+          "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "spec defines properties of a VolumeSnapshotContent created by the underlying storage system.\nRequired.",
+          "properties": {
+            "deletionPolicy": {
+              "description": "deletionPolicy determines whether this VolumeSnapshotContent and its physical snapshot on\nthe underlying storage system should be deleted when its bound VolumeSnapshot is deleted.\nSupported values are \"Retain\" and \"Delete\".\n\"Retain\" means that the VolumeSnapshotContent and its physical snapshot on underlying storage system are kept.\n\"Delete\" means that the VolumeSnapshotContent and its physical snapshot on underlying storage system are deleted.\nFor dynamically provisioned snapshots, this field will automatically be filled in by the\nCSI snapshotter sidecar with the \"DeletionPolicy\" field defined in the corresponding\nVolumeSnapshotClass.\nFor pre-existing snapshots, users MUST specify this field when creating the\n VolumeSnapshotContent object.\nRequired.",
+              "enum": [
+                "Delete",
+                "Retain"
+              ],
+              "type": "string"
+            },
+            "driver": {
+              "description": "driver is the name of the CSI driver used to create the physical snapshot on\nthe underlying storage system.\nThis MUST be the same as the name returned by the CSI GetPluginName() call for\nthat driver.\nRequired.",
+              "type": "string"
+            },
+            "source": {
+              "description": "source specifies whether the snapshot is (or should be) dynamically provisioned\nor already exists, and just requires a Kubernetes object representation.\nThis field is immutable after creation.\nRequired.",
+              "properties": {
+                "snapshotHandle": {
+                  "description": "snapshotHandle specifies the CSI \"snapshot_id\" of a pre-existing snapshot on\nthe underlying storage system for which a Kubernetes object representation\nwas (or should be) created.\nThis field is immutable.",
+                  "type": "string",
+                  "x-kubernetes-validations": [
+                    {
+                      "message": "snapshotHandle is immutable",
+                      "rule": "self == oldSelf"
+                    }
+                  ]
+                },
+                "volumeHandle": {
+                  "description": "volumeHandle specifies the CSI \"volume_id\" of the volume from which a snapshot\nshould be dynamically taken from.\nThis field is immutable.",
+                  "type": "string",
+                  "x-kubernetes-validations": [
+                    {
+                      "message": "volumeHandle is immutable",
+                      "rule": "self == oldSelf"
+                    }
+                  ]
+                }
+              },
+              "type": "object",
+              "x-kubernetes-validations": [
+                {
+                  "message": "volumeHandle is required once set",
+                  "rule": "!has(oldSelf.volumeHandle) || has(self.volumeHandle)"
+                },
+                {
+                  "message": "snapshotHandle is required once set",
+                  "rule": "!has(oldSelf.snapshotHandle) || has(self.snapshotHandle)"
+                },
+                {
+                  "message": "exactly one of volumeHandle and snapshotHandle must be set",
+                  "rule": "(has(self.volumeHandle) && !has(self.snapshotHandle)) || (!has(self.volumeHandle) && has(self.snapshotHandle))"
+                }
+              ]
+            },
+            "sourceVolumeMode": {
+              "description": "SourceVolumeMode is the mode of the volume whose snapshot is taken.\nCan be either \u201cFilesystem\u201d or \u201cBlock\u201d.\nIf not specified, it indicates the source volume's mode is unknown.\nThis field is immutable.\nThis field is an alpha field.",
+              "type": "string",
+              "x-kubernetes-validations": [
+                {
+                  "message": "sourceVolumeMode is immutable",
+                  "rule": "self == oldSelf"
+                }
+              ]
+            },
+            "volumeSnapshotClassName": {
+              "description": "name of the VolumeSnapshotClass from which this snapshot was (or will be)\ncreated.\nNote that after provisioning, the VolumeSnapshotClass may be deleted or\nrecreated with different set of values, and as such, should not be referenced\npost-snapshot creation.",
+              "type": "string"
+            },
+            "volumeSnapshotRef": {
+              "description": "volumeSnapshotRef specifies the VolumeSnapshot object to which this\nVolumeSnapshotContent object is bound.\nVolumeSnapshot.Spec.VolumeSnapshotContentName field must reference to\nthis VolumeSnapshotContent's name for the bidirectional binding to be valid.\nFor a pre-existing VolumeSnapshotContent object, name and namespace of the\nVolumeSnapshot object MUST be provided for binding to happen.\nThis field is immutable after creation.\nRequired.",
+              "properties": {
+                "apiVersion": {
+                  "description": "API version of the referent.",
+                  "type": "string"
+                },
+                "fieldPath": {
+                  "description": "If referring to a piece of an object instead of an entire object, this string\nshould contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2].\nFor example, if the object reference is to a container within a pod, this would take on a value like:\n\"spec.containers{name}\" (where \"name\" refers to the name of the container that triggered\nthe event) or if no container name is specified \"spec.containers[2]\" (container with\nindex 2 in this pod). This syntax is chosen only to have some well-defined way of\nreferencing a part of an object.\nTODO: this design is not final and this field is subject to change in the future.",
+                  "type": "string"
+                },
+                "kind": {
+                  "description": "Kind of the referent.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Name of the referent.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+                  "type": "string"
+                },
+                "namespace": {
+                  "description": "Namespace of the referent.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/",
+                  "type": "string"
+                },
+                "resourceVersion": {
+                  "description": "Specific resourceVersion to which this reference is made, if any.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency",
+                  "type": "string"
+                },
+                "uid": {
+                  "description": "UID of the referent.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids",
+                  "type": "string"
+                }
+              },
+              "type": "object",
+              "x-kubernetes-map-type": "atomic",
+              "x-kubernetes-validations": [
+                {
+                  "message": "both spec.volumeSnapshotRef.name and spec.volumeSnapshotRef.namespace must be set",
+                  "rule": "has(self.name) && has(self.__namespace__)"
+                }
+              ]
+            }
+          },
+          "required": [
+            "deletionPolicy",
+            "driver",
+            "source",
+            "volumeSnapshotRef"
+          ],
+          "type": "object",
+          "x-kubernetes-validations": [
+            {
+              "message": "sourceVolumeMode is required once set",
+              "rule": "!has(oldSelf.sourceVolumeMode) || has(self.sourceVolumeMode)"
+            }
+          ]
+        }
+      },
+      "required": [
+        "spec"
+      ],
+      "type": "object"
+    }
+  }
+}
