@@ -1,0 +1,177 @@
+{
+  "resources": {
+    "apiextensions.k8s.io/CustomResourceDefinition@v1": {
+      "$ref": "types.json#/362"
+    },
+    "apiregistration.k8s.io/APIService@v1": {
+      "$ref": "types.json#/363"
+    },
+    "apps/ControllerRevision@v1": {
+      "$ref": "types.json#/364"
+    },
+    "apps/DaemonSet@v1": {
+      "$ref": "types.json#/365"
+    },
+    "apps/Deployment@v1": {
+      "$ref": "types.json#/366"
+    },
+    "apps/ReplicaSet@v1": {
+      "$ref": "types.json#/367"
+    },
+    "apps/StatefulSet@v1": {
+      "$ref": "types.json#/368"
+    },
+    "autoscaling/HorizontalPodAutoscaler@v2": {
+      "$ref": "types.json#/369"
+    },
+    "batch/CronJob@v1": {
+      "$ref": "types.json#/370"
+    },
+    "batch/Job@v1": {
+      "$ref": "types.json#/371"
+    },
+    "certificates.k8s.io/CertificateSigningRequest@v1": {
+      "$ref": "types.json#/372"
+    },
+    "cilium.io/CiliumNetworkPolicy@v2": {
+      "$ref": "types.json#/373"
+    },
+    "coordination.k8s.io/Lease@v1": {
+      "$ref": "types.json#/374"
+    },
+    "core/Binding@v1": {
+      "$ref": "types.json#/375"
+    },
+    "core/ConfigMap@v1": {
+      "$ref": "types.json#/376"
+    },
+    "core/Endpoints@v1": {
+      "$ref": "types.json#/377"
+    },
+    "core/Event@v1": {
+      "$ref": "types.json#/378"
+    },
+    "core/LimitRange@v1": {
+      "$ref": "types.json#/379"
+    },
+    "core/Namespace@v1": {
+      "$ref": "types.json#/380"
+    },
+    "core/Node@v1": {
+      "$ref": "types.json#/381"
+    },
+    "core/PersistentVolume@v1": {
+      "$ref": "types.json#/382"
+    },
+    "core/PersistentVolumeClaim@v1": {
+      "$ref": "types.json#/383"
+    },
+    "core/Pod@v1": {
+      "$ref": "types.json#/384"
+    },
+    "core/PodTemplate@v1": {
+      "$ref": "types.json#/385"
+    },
+    "core/ReplicationController@v1": {
+      "$ref": "types.json#/386"
+    },
+    "core/ResourceQuota@v1": {
+      "$ref": "types.json#/387"
+    },
+    "core/Secret@v1": {
+      "$ref": "types.json#/388"
+    },
+    "core/Service@v1": {
+      "$ref": "types.json#/389"
+    },
+    "core/ServiceAccount@v1": {
+      "$ref": "types.json#/390"
+    },
+    "events.k8s.io/Event@v1": {
+      "$ref": "types.json#/391"
+    },
+    "example.com/Widget@v1": {
+      "$ref": "types.json#/392"
+    },
+    "flowcontrol.apiserver.k8s.io/FlowSchema@v1": {
+      "$ref": "types.json#/393"
+    },
+    "flowcontrol.apiserver.k8s.io/PriorityLevelConfiguration@v1": {
+      "$ref": "types.json#/394"
+    },
+    "gateway.networking.k8s.io/Gateway@v1": {
+      "$ref": "types.json#/395"
+    },
+    "gateway.networking.k8s.io/HTTPRoute@v1": {
+      "$ref": "types.json#/396"
+    },
+    "gateway.networking.k8s.io/ReferenceGrant@v1beta1": {
+      "$ref": "types.json#/397"
+    },
+    "k8smanifest/Raw@v1": {
+      "$ref": "types.json#/1067"
+    },
+    "networking.k8s.io/Ingress@v1": {
+      "$ref": "types.json#/1068"
+    },
+    "networking.k8s.io/IngressClass@v1": {
+      "$ref": "types.json#/1069"
+    },
+    "networking.k8s.io/NetworkPolicy@v1": {
+      "$ref": "types.json#/1070"
+    },
+    "node.k8s.io/RuntimeClass@v1": {
+      "$ref": "types.json#/1071"
+    },
+    "policy/PodDisruptionBudget@v1": {
+      "$ref": "types.json#/1072"
+    },
+    "rbac.authorization.k8s.io/ClusterRole@v1": {
+      "$ref": "types.json#/1073"
+    },
+    "rbac.authorization.k8s.io/ClusterRoleBinding@v1": {
+      "$ref": "types.json#/1074"
+    },
+    "rbac.authorization.k8s.io/Role@v1": {
+      "$ref": "types.json#/1075"
+    },
+    "rbac.authorization.k8s.io/RoleBinding@v1": {
+      "$ref": "types.json#/1076"
+    },
+    "scheduling.k8s.io/PriorityClass@v1": {
+      "$ref": "types.json#/1077"
+    },
+    "snapshot.storage.k8s.io/VolumeSnapshot@v1": {
+      "$ref": "types.json#/1078"
+    },
+    "snapshot.storage.k8s.io/VolumeSnapshotClass@v1": {
+      "$ref": "types.json#/1079"
+    },
+    "snapshot.storage.k8s.io/VolumeSnapshotContent@v1": {
+      "$ref": "types.json#/1080"
+    },
+    "storage.k8s.io/CSIDriver@v1": {
+      "$ref": "types.json#/1081"
+    },
+    "storage.k8s.io/CSINode@v1": {
+      "$ref": "types.json#/1082"
+    },
+    "storage.k8s.io/StorageClass@v1": {
+      "$ref": "types.json#/1083"
+    },
+    "storage.k8s.io/VolumeAttachment@v1": {
+      "$ref": "types.json#/1084"
+    }
+  },
+  "resourceFunctions": {},
+  "fallbackResourceType": {
+    "$ref": "types.json#/358"
+  },
+  "settings": {
+    "name": "k8smanifest",
+    "version": "0.1.10",
+    "configurationType": {
+      "$ref": "types.json#/361"
+    }
+  }
+}
