@@ -171,6 +171,7 @@ func TestRawTypeHandAuthored(t *testing.T) {
 	}
 
 	const rawRef = "k8smanifest/Raw@v1"
+
 	ref, ok := resources[rawRef]
 	if !ok {
 		t.Fatalf("index missing resource %s", rawRef)
@@ -178,6 +179,7 @@ func TestRawTypeHandAuthored(t *testing.T) {
 
 	m, _ := ref.(map[string]any)
 	ptr, _ := m["$ref"].(string)
+
 	if !strings.HasPrefix(ptr, typesFileName+"#/") {
 		t.Fatalf("resource %s ref %q must be a cross-file ref into %s", rawRef, ptr, typesFileName)
 	}
@@ -198,7 +200,16 @@ func TestRawTypeHandAuthored(t *testing.T) {
 	}
 
 	body := g.resolve(t, bodyRef)
-	if body["$type"] != "ObjectType" || body["name"] != "K8sManifestRawBody" {
+	assertRawBody(t, g, body)
+}
+
+// assertRawBody checks the resolved Raw body type: the K8sManifestRawBody
+// object, closed (no additionalProperties), with exactly one property —
+// document — of type AnyType (the wrapper keeps the manifest opaque).
+func assertRawBody(t *testing.T, g genTypes, body map[string]any) {
+	t.Helper()
+
+	if body["$type"] != objectType || body["name"] != "K8sManifestRawBody" {
 		t.Fatalf("body is not the K8sManifestRawBody object type: %v", body)
 	}
 
@@ -248,7 +259,7 @@ func TestDeploymentBodyRequired(t *testing.T) {
 	// metadata.name or metadata.generateName for named kinds, and BCP035 for
 	// template-level mistakes stays the API server's job), and described.
 	metaRef := g.resolve(t, props[metadataKey]["type"])
-	if metaRef["$type"] != "ObjectType" {
+	if metaRef["$type"] != objectType {
 		t.Fatalf("Deployment.metadata is not an ObjectType: %v", metaRef["$type"])
 	}
 
@@ -279,7 +290,7 @@ func TestPodTemplateMetadataNameOptional(t *testing.T) {
 	podTemplate := g.byName(t, "io.k8s.api.core.v1.PodTemplateSpec")
 
 	metaRef := g.resolve(t, propsOf(t, podTemplate)[metadataKey]["type"])
-	if metaRef["$type"] != "ObjectType" {
+	if metaRef["$type"] != objectType {
 		t.Fatalf("PodTemplateSpec.metadata is not an ObjectType")
 	}
 
@@ -510,7 +521,7 @@ func TestAllCataloguedBodiesTyped(t *testing.T) {
 
 func namedObject(file []map[string]any, name string) (map[string]any, bool) {
 	for _, entry := range file {
-		if entry["$type"] == "ObjectType" && entry[nameKey] == name {
+		if entry["$type"] == objectType && entry[nameKey] == name {
 			return entry, true
 		}
 	}

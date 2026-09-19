@@ -229,8 +229,8 @@ func computeManifest(req *resourceRequest) (*manifestResult, error) {
 // SOPS-encrypted document, ...) is emitted verbatim. known: false — the
 // scope check and the swagger typing apply to catalogue kinds only; a raw
 // document's scope is whatever the API server says at apply time. The
-// document kind drives the combined-file deploy priority and the single-
-// file file name, so a raw Secret sorts and names like a real Secret.
+// document kind drives the combined-file deploy priority and the
+// single-file name, so a raw Secret sorts and names like a real Secret.
 func rawDocument(body map[string]any) (map[string]any, resourceMeta, error) {
 	if len(body) != 1 {
 		return nil, resourceMeta{}, errors.New("a k8smanifest/Raw body must be exactly { document: <manifest> } (Bicep resource bodies are object literals, so a loaded manifest enters through the document property)")
@@ -243,6 +243,7 @@ func rawDocument(body map[string]any) (map[string]any, resourceMeta, error) {
 
 	apiVersion, _ := doc["apiVersion"].(string)
 	kind, _ := doc["kind"].(string)
+
 	if apiVersion == "" || kind == "" {
 		return nil, resourceMeta{}, errors.New("a k8smanifest/Raw document must carry its own apiVersion and kind (the extension does not add them for raw documents)")
 	}

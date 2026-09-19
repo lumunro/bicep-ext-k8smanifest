@@ -26,6 +26,7 @@ const (
 	kindKey        = "kind"
 	metadataKey    = "metadata"
 	nameKey        = "name"
+	objectType     = "ObjectType"
 	outDir         = "out" // extension-config outputDir used by the write tests
 )
 
@@ -209,9 +210,9 @@ func TestWriteManifestCombinedRawOrder(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 
-	kinds := writeCombinedOrder(t, dir, "apps/Deployment", "web",
+	writeCombinedOrder(t, dir, "apps/Deployment", "web",
 		`{"metadata":{"name":"web","namespace":"ns1"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"web"}},"template":{"metadata":{"labels":{"app":"web"}},"spec":{"containers":[{"name":"c","image":"nginx"}]}}}}`)
-	kinds = writeCombinedOrder(t, dir, "k8smanifest/Raw", "web-secret",
+	kinds := writeCombinedOrder(t, dir, "k8smanifest/Raw", "web-secret",
 		`{"document":{"apiVersion":"v1","kind":"Secret","metadata":{"name":"web-secret","namespace":"ns1"},"data":{"k":"ENC[AES256_GCM,data:xyz,iv:abc,tag:def,type:str]"},"sops":{"mac":"ENC[AES256_GCM,data:mac,iv:m2c,tag:mae,type:str"}}}`)
 
 	want := []string{"Secret", deploymentKind}
