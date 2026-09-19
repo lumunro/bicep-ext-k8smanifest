@@ -1,0 +1,6 @@
+{
+  "experimentalFeaturesEnabled": {
+    "localDeploy": true,
+    "ociEnabled": true
+  }
+}
