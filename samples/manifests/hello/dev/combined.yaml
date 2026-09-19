@@ -10,7 +10,7 @@ spec:
   ports:
     - name: http
       port: 80
-      targetPort: 8080
+      targetPort: 80
   selector:
     app: hello
 ---
@@ -34,22 +34,22 @@ spec:
         app.kubernetes.io/managed-by: bicep
     spec:
       containers:
-        - image: mendhak/http-https-echo:41
+        - image: nginx:alpine
           livenessProbe:
             failureThreshold: 3
             httpGet:
               path: /
-              port: 8080
+              port: 80
             initialDelaySeconds: 10
             periodSeconds: 10
           name: hello
           ports:
-            - containerPort: 8080
+            - containerPort: 80
           readinessProbe:
             failureThreshold: 3
             httpGet:
               path: /
-              port: 8080
+              port: 80
             initialDelaySeconds: 3
             periodSeconds: 5
           resources:
