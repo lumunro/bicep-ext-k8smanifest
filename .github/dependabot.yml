@@ -11,7 +11,7 @@
 # dependencies — Dependabot correctly has nothing to do with them.
 version: 2
 updates:
-  - package-ecosystem: "golang"
+  - package-ecosystem: "gomod"
     directory: "/src"
     schedule:
       interval: "monthly"
