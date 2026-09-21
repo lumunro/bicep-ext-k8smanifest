@@ -253,6 +253,37 @@ jobs:
           echo "  { \"experimentalFeaturesEnabled\": { \"localDeploy\": true, \"ociEnabled\": true },"
           echo "    \"extensions\": { \"k8smanifest\": \"br:${REGISTRY}/${REPO}:${EXT_VERSION}\" } }"
 
+      # A push via GITHUB_TOKEN only auto-links NEW packages to this repo.
+      # A package that already exists outside this workflow (e.g. pushed
+      # locally with a PAT) stays user-scoped: the registry serves it fine
+      # once it is public, so a successful push proves nothing about the
+      # link, and an unlinked package is invisible on the repo page to
+      # anonymous visitors. Verify the link explicitly and fail with the
+      # manual fix instructions if it is missing.
+      # (There is no REST/GraphQL API to link a container package to a
+      # repo — it is a one-time UI step: Package settings -> Repository
+      # source -> link this repo.)
+      - name: Verify the package is linked to this repo (GHCR)
+        if: env.REGISTRY == 'ghcr.io'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pkg="${REPO#*/}"
+          if ! gh api --jq '.[].name' "repos/${GITHUB_REPOSITORY}/packages?package_type=container" | grep -qx "$pkg"; then
+            {
+              echo "ERROR: br:${REGISTRY}/${REPO}:${{ steps.ver.outputs.version }} was pushed but the package is NOT linked to ${GITHUB_REPOSITORY}"
+              echo
+              echo "Fix once (no re-publish needed):"
+              echo "  1. Open https://github.com/${GITHUB_REPOSITORY_OWNER}/packages/container/${pkg}"
+              echo "  2. Package settings -> Repository source -> link ${GITHUB_REPOSITORY}"
+              echo
+              echo "Until it is linked, the package does not appear on the repo page for"
+              echo "anonymous visitors (user-scoped packages only render for their owner)."
+            } >&2
+            exit 1
+          fi
+          echo "==> br:${REGISTRY}/${REPO} is linked to ${GITHUB_REPOSITORY}"
+
       - name: Create the GitHub release (portable/offline channel)
         env:
           GH_TOKEN: ${{ github.token }}
