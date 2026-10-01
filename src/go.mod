@@ -4,7 +4,7 @@ go 1.27
 
 require (
 	github.com/Azure/bicep-types/src/bicep-types-go v0.0.0-20260913201614-17ae1ca16285
-	google.golang.org/grpc v1.83.2
+	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v3 v3.0.1
 )
