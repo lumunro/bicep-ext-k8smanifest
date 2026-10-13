@@ -31,32 +31,20 @@ them, adds `apiVersion` and `kind`, and writes the YAML.
 1) The Bicep file declares `targetScope = 'local'` and
    `extension k8smanifest with { outputDir: ..., combine: ... }`. Each
    `resource x '<group>/<Kind>@<version>'` body is the manifest body
-   (`metadata`, `spec`, `data`, …).
-2) The extension resolves the kind to its `apiVersion`, validates
-   `metadata.name` and the scope (namespaced vs cluster-scoped), and writes
-   the YAML. `apiVersion` and `kind` are added by the extension — they are
-   never taken from the body.
-3) The output is deterministic. File names are stable
-   (`<kind>-<namespace>-<name>.yaml` for namespaced kinds), keys are sorted,
-   and with `combine: true` a single `combined.yaml` is written, sorted by a
-   kubectl/helm-style deploy priority, so a one-pass `kubectl apply` works.
-4) The resource bodies are fully typed in the IDE. Types are generated from
-   the Kubernetes OpenAPI swagger into `src/gen/` by `src/cmd/gentypes`, which
-   gives hover descriptions, typed inputs and required-flag enforcement
-   (BCP035/BCP036). Around 50 kinds are catalogued — `core`, `apps/v1`,
-   `batch/v1`, `networking.k8s.io/v1`, `gateway.networking.k8s.io/v1`,
-   `rbac/v1`, `storage.k8s.io/v1`, `apiextensions.k8s.io/v1` and more. Kinds
-   without a type (CRDs, preview APIs) fall back to a permissive type.
-5) Documents the typed bodies cannot model go through the
-   `k8smanifest/Raw@v1` verbatim passthrough: the body is
-   `{ document: loadYamlContent('...') }` and the extension emits the
-   document as-is (`apiVersion`/`kind` from the document) — e.g. a
-   SOPS-encrypted manifest whose `sops` metadata block the typed `Secret`
-   schema rejects. See [docs/architecture.md](docs/architecture.md).
+   (`metadata`, `spec`, `data`, …); `apiVersion` and `kind` are added by
+   the extension — they are never taken from the body.
+2) The output is deterministic: stable file names, sorted keys, and with
+   `combine: true` a single `combined.yaml` ordered by a kubectl/helm-style
+   deploy priority, so a one-pass `kubectl apply` works.
+3) Resource bodies are fully typed in the IDE — hover descriptions, type
+   checks and required-field enforcement — from the Kubernetes API
+   definition. Kinds outside the catalogue fall back to a permissive type,
+   and documents a typed body cannot model go through the
+   `k8smanifest/Raw@v1` verbatim passthrough — e.g. a SOPS-encrypted
+   manifest whose `sops` metadata block the typed `Secret` schema rejects.
 
-Full details — type coverage, YAML correctness, repository layout, Flux
-deployment and the open items — are in
-[docs/architecture.md](docs/architecture.md).
+Full details — type coverage, YAML correctness, repository layout and Flux
+deployment — are in [docs/architecture.md](docs/architecture.md).
 
 ## Requirements
 
@@ -113,16 +101,11 @@ and reference it with a `br:` URI:
 }
 ```
 
-- Bicep's OCI artifact support is a **preview** feature (hence the
-  `ociEnabled` experimental flag) and is **registry-agnostic**: any OCI
-  Distribution registry works — GHCR, ACR, Docker Hub, Harbor, …
-- Publish with
-  `bicep publish-extension --target br:<registry>/<repo>:<version>`
-  (`scripts/release-build.sh` builds the multi-platform set; the CI
-  `publish` job runs this and verifies the manifest).
-- Consumers need registry credentials (`docker login` or the `DOCKER_*`
-  environment variables) and, where the registry requires it,
-  `BICEP_TRUSTED_REGISTRIES`.
+Bicep's OCI artifact support is a **preview** feature (hence the
+`ociEnabled` experimental flag) and works with any OCI Distribution
+registry. Publishing, consumer credentials and the multi-platform release
+build are covered in
+[docs/architecture.md — Consuming the extension](docs/architecture.md#consuming-the-extension).
 
 4) Generate the examples' manifests:
 
